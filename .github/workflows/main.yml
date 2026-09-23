@@ -1,26 +1,35 @@
-substitutions:
-  _REGION: us-central1
-  _REPOSITORY: snz
-  _IMAGE: skysensepp
-  _RUNPOD_ENDPOINT_ID: ""
-  _MODEL_ID: BiliSakura/SkySensepp
+name: Build SkySense++
 
-steps:
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - --tag
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
-      - --tag
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:latest
-      - .
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
-images:
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:latest
+jobs:
+  build:
+    name: Build SkySense++ Docker Image
+    runs-on: ubuntu-latest
 
-options:
-  machineType: E2_HIGHCPU_8
-  logging: CLOUD_LOGGING_ONLY
+    permissions:
+      contents: read
 
-timeout: 1800s
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: skysensepp:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
