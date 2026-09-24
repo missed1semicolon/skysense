@@ -141,7 +141,7 @@ def load_model() -> None:
     global model
 
     print("=" * 70)
-    print("SNZ SKY SENSE++ WORKER STARTING")
+    print("SNZ SKY SENSE++ V8 WORKER STARTING")
     print("=" * 70)
     print(f"Model: {MODEL_ID}")
     print(f"Device: {DEVICE}")
@@ -256,16 +256,22 @@ def run_inference(job_input: Dict[str, Any]) -> Dict[str, Any]:
     if model is None:
         raise RuntimeError("SkySense++ model has not been loaded.")
 
-    hr_b64 = job_input.get("image_b64") or job_input.get("hr_image_b64")
+    hr_b64 = (
+        job_input.get("optical_image_b64")
+        or job_input.get("image_b64")
+        or job_input.get("hr_image_b64")
+    )
     s1_b64 = (
         job_input.get("s1_array_b64")
         or job_input.get("s1_npy_b64")
         or job_input.get("sentinel1_b64")
+        or job_input.get("sar_array_b64")
     )
     s2_b64 = (
         job_input.get("s2_array_b64")
         or job_input.get("s2_npy_b64")
         or job_input.get("sentinel2_b64")
+        or job_input.get("optical_spectral_b64")
     )
 
     if not hr_b64:
@@ -352,6 +358,13 @@ def run_inference(job_input: Dict[str, Any]) -> Dict[str, Any]:
             if isinstance(output.get("features_s1"), torch.Tensor)
             else None
         ),
+        "analysis_plan": job_input.get("analysis_plan") or job_input.get("metadata", {}).get("analysis_plan", {}),
+        "input_contract": {
+            "optical_image_supplied": bool(hr_b64),
+            "sar_image_supplied": bool(job_input.get("sar_image_b64")),
+            "sentinel1_array_supplied": bool(s1_b64),
+            "sentinel2_array_supplied": bool(s2_b64),
+        },
         "modalities_present": {
             "hr": True,
             "s2": s2_tensor is not None,
@@ -379,8 +392,13 @@ def run_inference(job_input: Dict[str, Any]) -> Dict[str, Any]:
             "evidence_overlay_b64": overlay_b64,
             "overlay_type": "fused_feature_activation",
             "ground_truth": False,
+            "interpretation_note": (
+                "SkySense++ output is auxiliary multimodal representation evidence. "
+                "It is not a semantic segmentation mask and must be reconciled with imagery by RSCoVLM."
+            ),
         },
         "metadata": {
+            "analysis_plan": job_input.get("analysis_plan") or job_input.get("metadata", {}).get("analysis_plan", {}),
             "original_image_size": {
                 "width": original_size[0],
                 "height": original_size[1],
