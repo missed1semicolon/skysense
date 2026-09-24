@@ -35,8 +35,6 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/skysensepp:latest
-            ghcr.io/${{ github.repository_owner }}/skysensepp:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository_owner }}/skysensepp:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
